@@ -1,4 +1,5 @@
 import { UploadIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -8,14 +9,128 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "#/components/ui/dialog";
+import { toast } from "#/components/ui/toast";
+import { cn } from "#/lib/utils";
 
 import { Button } from "../ui/button";
 import { InputStyled } from "../ui/styled-input";
 
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+
+type SelectedImage = {
+  file: File;
+  url: string;
+};
+
 export const AddOutfitDialog = () => {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [image, setImage] = useState<SelectedImage | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<SelectedImage | null>(null);
+
+  useEffect(() => {
+    imageRef.current = image;
+  }, [image]);
+
+  useEffect(() => {
+    return () => {
+      if (imageRef.current) {
+        URL.revokeObjectURL(imageRef.current.url);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const preventDefault = (event: DragEvent) => event.preventDefault();
+    document.addEventListener("dragover", preventDefault);
+    document.addEventListener("drop", preventDefault);
+    return () => {
+      document.removeEventListener("dragover", preventDefault);
+      document.removeEventListener("drop", preventDefault);
+    };
+  }, [open]);
+
+  const clearImage = () => {
+    setImage((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev.url);
+      }
+      return null;
+    });
+  };
+
+  const resetState = () => {
+    setName("");
+    setDragActive(false);
+    clearImage();
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      resetState();
+    }
+  };
+
+  const handleFile = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.add({ type: "error", description: "Only image files can be added." });
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.add({ type: "error", description: "Image is too large. Keep it under 10 MB." });
+      return;
+    }
+    setImage((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev.url);
+      }
+      return { file, url: URL.createObjectURL(file) };
+    });
+  };
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    handleFile(event.target.files?.[0]);
+    event.target.value = "";
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    setDragActive(false);
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    setDragActive(false);
+    handleFile(event.dataTransfer.files?.[0]);
+  };
+
+  const handleSave = () => {
+    if (!name.trim()) {
+      toast.add({ type: "error", description: "Give your outfit a name first." });
+      return;
+    }
+    if (!image) {
+      toast.add({ type: "error", description: "Add a photo of your outfit first." });
+      return;
+    }
+    toast.add({ type: "success", description: "Outfit saved." });
+    resetState();
+    setOpen(false);
+  };
+
   return (
     <>
-      <Dialog>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger
           render={
             <Button
@@ -39,22 +154,74 @@ export const AddOutfitDialog = () => {
           </DialogHeader>
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="flex flex-col gap-4">
-              <div className="flex h-30 w-full flex-col items-center justify-center gap-4 border border-dashed border-black bg-[#e9e6e1]">
-                <UploadIcon size={18} strokeWidth={3} />
-                <span className="agdasima-regular text-xs tracking-widest uppercase">
-                  Drop Photos or click to upload
-                </span>
-              </div>
-              <InputStyled className="bg-[#e9e6e1]" name="Outfit Name" />
-              <Button className={"agdasima-bold h-9 rounded-xs text-xs uppercase"}>
+              <input
+                ref={inputRef}
+                id="outfit-photo"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={handleInputChange}
+              />
+              <button
+                type="button"
+                className={cn(
+                  "flex h-30 w-full cursor-pointer flex-col items-center justify-center gap-4 border border-dashed border-black bg-[#e9e6e1]",
+                  dragActive && "border-solid ring-2 ring-black/30",
+                )}
+                onClick={() => inputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                {image ? (
+                  <img
+                    src={image.url}
+                    alt="Selected outfit"
+                    className="h-full w-full object-cover lg:hidden"
+                  />
+                ) : null}
+                <div
+                  className={cn(
+                    "pointer-events-none flex flex-col items-center justify-center gap-4",
+                    image && "hidden lg:flex",
+                  )}
+                >
+                  <UploadIcon size={18} strokeWidth={3} />
+                  <span className="agdasima-regular text-xs tracking-widest uppercase">
+                    Drop Photos or click to upload
+                  </span>
+                </div>
+              </button>
+              <InputStyled
+                className="bg-[#e9e6e1]"
+                name="Outfit Name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+              <Button
+                className={"agdasima-bold h-9 rounded-xs text-xs uppercase"}
+                onClick={handleSave}
+              >
                 Save Outfit
               </Button>
             </div>
-            <div className="hidden flex-col items-center justify-center gap-4 rounded-xs bg-blue-500 p-6 text-white lg:flex">
-              <span className="agdasima-regular text-xl tracking-widest uppercase">Preview</span>
-              <span className="agdasima-regular text-sm uppercase opacity-80">
-                Your outfit will show up here
-              </span>
+            <div className="hidden flex-col items-center justify-center gap-4 overflow-hidden rounded-xs bg-blue-500 p-4 text-white lg:flex">
+              {image ? (
+                <img
+                  src={image.url}
+                  alt="Selected outfit"
+                  className="h-full min-h-40 w-full rounded-xs object-cover"
+                />
+              ) : (
+                <>
+                  <span className="agdasima-regular text-xl tracking-widest uppercase">
+                    Preview
+                  </span>
+                  <span className="agdasima-regular text-sm uppercase opacity-80">
+                    Your outfit will show up here
+                  </span>
+                </>
+              )}
             </div>
           </div>
           <span className="agdasima-regular mx-auto text-sm font-light tracking-wider uppercase opacity-50">
