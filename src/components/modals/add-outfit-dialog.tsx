@@ -78,11 +78,17 @@ export const AddOutfitDialog = () => {
   const handleFile = (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.add({ type: "error", description: "Only image files can be added." });
+      toast.add({
+        type: "error",
+        description: "Only image files can be added.",
+      });
       return;
     }
     if (file.size > MAX_IMAGE_SIZE) {
-      toast.add({ type: "error", description: "Image is too large. Keep it under 10 MB." });
+      toast.add({
+        type: "error",
+        description: "Image is too large. Keep it under 10 MB.",
+      });
       return;
     }
     setImage((prev) => {
@@ -116,11 +122,17 @@ export const AddOutfitDialog = () => {
 
   const handleSave = () => {
     if (!name.trim()) {
-      toast.add({ type: "error", description: "Give your outfit a name first." });
+      toast.add({
+        type: "error",
+        description: "Give your outfit a name first.",
+      });
       return;
     }
     if (!image) {
-      toast.add({ type: "error", description: "Add a photo of your outfit first." });
+      toast.add({
+        type: "error",
+        description: "Add a photo of your outfit first.",
+      });
       return;
     }
     toast.add({ type: "success", description: "Outfit saved." });
@@ -148,88 +160,92 @@ export const AddOutfitDialog = () => {
             />
           }
         />
-        <DialogContent className={"rounded-xs lg:max-w-2xl"}>
-          <DialogHeader>
-            <DialogTitle className={"astloch-bold mx-auto text-3xl"}>Add Outfit</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="flex flex-col gap-4">
-              <input
-                ref={inputRef}
-                id="outfit-photo"
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={handleInputChange}
-              />
-              <button
-                type="button"
-                className={cn(
-                  "flex h-30 w-full cursor-pointer flex-col items-center justify-center gap-4 border border-dashed border-black bg-[#e9e6e1]",
-                  dragActive && "border-solid ring-2 ring-black/30",
-                )}
-                onClick={() => inputRef.current?.click()}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
+        <DialogContent
+          className={"no-scrollbar h-[80svh] max-h-[90vh] overflow-y-auto rounded-xs lg:max-w-2xl"}
+        >
+          <div className="flex min-h-0 flex-1 flex-col gap-6">
+            <DialogHeader>
+              <DialogTitle className={"astloch-bold mx-auto text-3xl"}>Add Outfit</DialogTitle>
+            </DialogHeader>
+            <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
+              <div className="flex min-h-0 flex-1 flex-col gap-4">
+                <input
+                  ref={inputRef}
+                  id="outfit-photo"
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleInputChange}
+                />
+                <button
+                  type="button"
+                  className={cn(
+                    "relative flex min-h-0 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-4 overflow-hidden border border-dashed border-black bg-[#e9e6e1]",
+                    dragActive && "border-solid ring-2 ring-black/30",
+                  )}
+                  onClick={() => inputRef.current?.click()}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  {image ? (
+                    <img
+                      src={image.url}
+                      alt="Selected outfit"
+                      className="absolute inset-0 h-full max-h-full w-full rounded-sm object-contain lg:hidden"
+                    />
+                  ) : null}
+                  <div
+                    className={cn(
+                      "pointer-events-none flex flex-col items-center justify-center gap-4",
+                      image && "hidden lg:flex",
+                    )}
+                  >
+                    <UploadIcon size={18} strokeWidth={3} />
+                    <span className="agdasima-regular text-xs tracking-widest uppercase">
+                      Drop Photos or click to upload
+                    </span>
+                  </div>
+                </button>
+                <InputStyled
+                  className="bg-[#e9e6e1]"
+                  name="Outfit Name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+                <Button
+                  className={"agdasima-bold h-9 rounded-xs text-xs uppercase"}
+                  onClick={handleSave}
+                >
+                  Save Outfit
+                </Button>
+              </div>
+              <div className="relative hidden min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-xs border bg-[#e9e6e1] p-4 text-black lg:flex">
                 {image ? (
                   <img
                     src={image.url}
                     alt="Selected outfit"
-                    className="h-full w-full object-cover lg:hidden"
+                    className="absolute inset-0 h-full max-h-full w-full rounded-xs object-contain"
                   />
-                ) : null}
-                <div
-                  className={cn(
-                    "pointer-events-none flex flex-col items-center justify-center gap-4",
-                    image && "hidden lg:flex",
-                  )}
-                >
-                  <UploadIcon size={18} strokeWidth={3} />
-                  <span className="agdasima-regular text-xs tracking-widest uppercase">
-                    Drop Photos or click to upload
-                  </span>
-                </div>
-              </button>
-              <InputStyled
-                className="bg-[#e9e6e1]"
-                name="Outfit Name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-              <Button
-                className={"agdasima-bold h-9 rounded-xs text-xs uppercase"}
-                onClick={handleSave}
-              >
-                Save Outfit
-              </Button>
+                ) : (
+                  <>
+                    <span className="agdasima-regular text-xl tracking-widest uppercase">
+                      Preview
+                    </span>
+                    <span className="agdasima-regular text-sm uppercase opacity-80">
+                      Your outfit will show up here
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="hidden flex-col items-center justify-center gap-4 overflow-hidden rounded-xs bg-blue-500 p-4 text-white lg:flex">
-              {image ? (
-                <img
-                  src={image.url}
-                  alt="Selected outfit"
-                  className="h-full min-h-40 w-full rounded-xs object-cover"
-                />
-              ) : (
-                <>
-                  <span className="agdasima-regular text-xl tracking-widest uppercase">
-                    Preview
-                  </span>
-                  <span className="agdasima-regular text-sm uppercase opacity-80">
-                    Your outfit will show up here
-                  </span>
-                </>
-              )}
-            </div>
+            <span className="agdasima-regular mx-auto text-sm font-light tracking-wider uppercase opacity-50">
+              Changed your mind?{" "}
+              <DialogClose className={"uppercase underline-offset-2 hover:underline"}>
+                Cancel
+              </DialogClose>
+            </span>
           </div>
-          <span className="agdasima-regular mx-auto text-sm font-light tracking-wider uppercase opacity-50">
-            Changed your mind?{" "}
-            <DialogClose className={"uppercase underline-offset-2 hover:underline"}>
-              Cancel
-            </DialogClose>
-          </span>
         </DialogContent>
       </Dialog>
     </>
