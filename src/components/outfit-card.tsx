@@ -1,13 +1,21 @@
+import { Link } from "@tanstack/react-router";
+
 import { fitImageUrl } from "#/lib/outfits/image-url.ts";
 
 type OutfitCardProps = {
+  id: string;
   name: string;
   image: string | null;
 };
 
-export function OutfitCard({ name, image }: OutfitCardProps) {
+export function OutfitCard({ id, name, image }: OutfitCardProps) {
   return (
-    <article className="group">
+    <Link
+      to="/$outfitId"
+      params={{ outfitId: id }}
+      aria-label={`View ${name}`}
+      className="group block"
+    >
       <div className="flex aspect-[3/4] items-center justify-center overflow-hidden">
         {image ? (
           <img
@@ -18,6 +26,6 @@ export function OutfitCard({ name, image }: OutfitCardProps) {
           />
         ) : null}
       </div>
-    </article>
+    </Link>
   );
 }

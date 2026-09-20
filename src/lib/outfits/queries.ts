@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { $listOutfits } from "./functions";
+import { $getOutfit, $listOutfits } from "./functions";
 
 /**
  * Shared query for the browse gallery (homepage). Kept as a reusable options
@@ -10,4 +10,13 @@ export const outfitsQueryOptions = () =>
   queryOptions({
     queryKey: ["outfits"],
     queryFn: ({ signal }) => $listOutfits({ signal }),
+  });
+
+/**
+ * Single-outfit query for the detail page.
+ */
+export const outfitQueryOptions = (outfitId: string) =>
+  queryOptions({
+    queryKey: ["outfits", outfitId],
+    queryFn: ({ signal }) => $getOutfit({ data: outfitId, signal }),
   });

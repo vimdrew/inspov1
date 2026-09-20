@@ -15,9 +15,18 @@ type ThemeProviderState = {
   setTheme: (theme: Theme) => void;
 };
 
+// TEMP: Force the entire app to light mode. This ignores stored/system theme
+// preferences and never applies the "dark" class. Flip to false (and remove the
+// FORCE_LIGHT_MODE branches below) to restore dark-mode support later.
+const FORCE_LIGHT_MODE = true;
+
 function getThemeScript(storageKey: string, defaultTheme: Theme) {
   const key = JSON.stringify(storageKey);
   const fallback = JSON.stringify(defaultTheme);
+
+  if (FORCE_LIGHT_MODE) {
+    return `(function(){var e=document.documentElement;e.classList.remove('dark');e.classList.add('light');e.style.colorScheme='light'})();`;
+  }
 
   return `(function(){try{var t=localStorage.getItem(${key});if(t!=='light'&&t!=='dark'&&t!=='system'){t=${fallback}}var d=matchMedia('(prefers-color-scheme: dark)').matches;var r=t==='system'?(d?'dark':'light'):t;var e=document.documentElement;e.classList.add(r);e.style.colorScheme=r}catch(e){}})();`;
 }
@@ -30,6 +39,12 @@ const ThemeProviderContext = createContext<ThemeProviderState>({
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
   root.classList.remove("light", "dark");
+
+  if (FORCE_LIGHT_MODE) {
+    root.classList.add("light");
+    root.style.colorScheme = "light";
+    return;
+  }
 
   const resolved =
     theme === "system"
@@ -55,7 +70,9 @@ export function ThemeProvider({
     const stored = localStorage.getItem(storageKey);
     // oxlint-disable-next-line react/set-state-in-effect
     setThemeState(
-      stored === "light" || stored === "dark" || stored === "system" ? stored : defaultTheme,
+      FORCE_LIGHT_MODE || !(stored === "light" || stored === "dark" || stored === "system")
+        ? "light"
+        : stored,
     );
     setMounted(true);
   }, [defaultTheme, storageKey]);

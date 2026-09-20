@@ -60,3 +60,10 @@ export const $deleteOrphanImage = createServerFn({ method: "POST" })
 export const $listOutfits = createServerFn({ method: "GET" }).handler(async () => {
   return db.select().from(outfits).orderBy(desc(outfits.createdAt));
 });
+
+export const $getOutfit = createServerFn({ method: "GET" })
+  .validator((outfitId: string) => outfitId)
+  .handler(async ({ data: outfitId }) => {
+    const [outfit] = await db.select().from(outfits).where(eq(outfits.id, outfitId));
+    return outfit ?? null;
+  });

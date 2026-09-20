@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 
 import { OutfitCard } from "#/components/outfit-card.tsx";
-import { ThemeToggle } from "#/components/theme-toggle.tsx";
 import { authClient } from "#/lib/auth/auth-client.ts";
 import { authQueryOptions } from "#/lib/auth/queries.ts";
 import { outfitsQueryOptions } from "#/lib/outfits/queries.ts";
@@ -32,7 +31,7 @@ function BrowsePage() {
         ) : outfits?.length ? (
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-4">
             {outfits.map((outfit) => (
-              <OutfitCard key={outfit.id} name={outfit.name} image={outfit.image} />
+              <OutfitCard key={outfit.id} id={outfit.id} name={outfit.name} image={outfit.image} />
             ))}
           </div>
         ) : (
@@ -48,7 +47,7 @@ function Header() {
   const router = useRouter();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
+    <header className="sticky top-0 z-20 h-[10%] max-h-200 border-b border-border bg-background/80 backdrop-blur">
       <div className="flex items-center justify-between px-3 py-3 md:px-4">
         <Link
           to="/"
@@ -57,7 +56,6 @@ function Header() {
           Inspo
         </Link>
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <button
             type="button"
             onClick={async () => {
