@@ -1,5 +1,8 @@
+import { useForm } from "@tanstack/react-form";
 import { UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { ENV } from "varlock/env";
+import z from "zod";
 
 import {
   Dialog,
@@ -10,6 +13,7 @@ import {
   DialogTrigger,
 } from "#/components/ui/dialog";
 import { toast } from "#/components/ui/toast";
+import { $createOutfit, $deleteOrphanImage, $getUploadSignature } from "#/lib/outfits/functions.ts";
 import { cn } from "#/lib/utils";
 
 import { Button } from "../ui/button";
@@ -20,13 +24,36 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 type SelectedImage = {
   file: File;
   url: string;
+  status: "uploading" | "saved";
+  upload: Promise<{ secureUrl: string }>;
 };
+
+const createOutfitSchema = z.object({
+  name: z.string().min(1, "Give your outfit a name"),
+});
+
+const uploadToCloudinary = (file: File): Promise<{ secureUrl: string }> =>
+  $getUploadSignature().then(({ timestamp, signature, folder }) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("api_key", ENV.CLOUDINARY_API_KEY);
+    formData.append("timestamp", String(timestamp));
+    formData.append("signature", signature);
+    formData.append("folder", folder);
+    return fetch(`https://api.cloudinary.com/v1_1/${ENV.CLOUDINARY_CLOUD_NAME}/image/upload`, {
+      method: "POST",
+      body: formData,
+    }).then((res) => {
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json().then((data) => ({ secureUrl: data.secure_url as string }));
+    });
+  });
 
 export const AddOutfitDialog = () => {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
   const [image, setImage] = useState<SelectedImage | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<SelectedImage | null>(null);
 
@@ -53,6 +80,14 @@ export const AddOutfitDialog = () => {
     };
   }, [open]);
 
+  const abandonCurrentImage = () => {
+    const img = imageRef.current;
+    if (!img) return;
+    img.upload
+      .then(({ secureUrl }) => $deleteOrphanImage({ data: { imageUrl: secureUrl } }))
+      .catch(() => {});
+  };
+
   const clearImage = () => {
     setImage((prev) => {
       if (prev) {
@@ -63,7 +98,7 @@ export const AddOutfitDialog = () => {
   };
 
   const resetState = () => {
-    setName("");
+    form.reset();
     setDragActive(false);
     clearImage();
   };
@@ -71,6 +106,7 @@ export const AddOutfitDialog = () => {
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (!next) {
+      abandonCurrentImage();
       resetState();
     }
   };
@@ -91,11 +127,16 @@ export const AddOutfitDialog = () => {
       });
       return;
     }
+    abandonCurrentImage();
+    const upload = uploadToCloudinary(file).catch(() => {
+      toast.add({ type: "error", description: "Image upload failed." });
+      throw new Error("Image upload failed");
+    });
     setImage((prev) => {
       if (prev) {
         URL.revokeObjectURL(prev.url);
       }
-      return { file, url: URL.createObjectURL(file) };
+      return { file, url: URL.createObjectURL(file), status: "uploading", upload };
     });
   };
 
@@ -120,25 +161,41 @@ export const AddOutfitDialog = () => {
     handleFile(event.dataTransfer.files?.[0]);
   };
 
-  const handleSave = () => {
-    if (!name.trim()) {
-      toast.add({
-        type: "error",
-        description: "Give your outfit a name first.",
-      });
-      return;
-    }
-    if (!image) {
-      toast.add({
-        type: "error",
-        description: "Add a photo of your outfit first.",
-      });
-      return;
-    }
-    toast.add({ type: "success", description: "Outfit saved." });
-    resetState();
-    setOpen(false);
-  };
+  const form = useForm({
+    defaultValues: {
+      name: "",
+    },
+    validators: {
+      onChange: createOutfitSchema,
+    },
+    onSubmit: async ({ value }) => {
+      const img = imageRef.current;
+      if (!img) {
+        toast.add({
+          type: "error",
+          description: "Add a photo of your outfit first.",
+        });
+        return;
+      }
+      setSaving(true);
+      try {
+        const { secureUrl } = await img.upload;
+        await $createOutfit({ data: { name: value.name, imageUrl: secureUrl } });
+        img.status = "saved";
+        imageRef.current = null;
+        toast.add({ type: "success", description: "Outfit saved." });
+        resetState();
+        setOpen(false);
+      } catch {
+        toast.add({
+          type: "error",
+          description: "Could not save your outfit. Try again.",
+        });
+      } finally {
+        setSaving(false);
+      }
+    },
+  });
 
   return (
     <>
@@ -167,7 +224,14 @@ export const AddOutfitDialog = () => {
             <DialogHeader>
               <DialogTitle className={"astloch-bold mx-auto text-3xl"}>Add Outfit</DialogTitle>
             </DialogHeader>
-            <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                form.handleSubmit();
+              }}
+              className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row"
+            >
               <div className="flex min-h-0 flex-1 flex-col gap-4">
                 <input
                   ref={inputRef}
@@ -207,15 +271,34 @@ export const AddOutfitDialog = () => {
                     </span>
                   </div>
                 </button>
-                <InputStyled
-                  className="bg-[#e9e6e1]"
-                  name="Outfit Name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
+
+                <form.Field
+                  name="name"
+                  children={(field) => {
+                    return (
+                      <div className="grid gap-2">
+                        <InputStyled
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          id="name"
+                          name="Outfit Name"
+                          className="bg-[#e9e6e1]"
+                          type="text"
+                        />
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-[10px] text-red-500">
+                            {field.state.meta.errors[0]?.message}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }}
                 />
                 <Button
-                  className={"agdasima-bold h-9 rounded-xs text-xs uppercase"}
-                  onClick={handleSave}
+                  type="submit"
+                  disabled={saving}
+                  className={"agdasima-bold h-9 rounded-xs text-xs uppercase disabled:opacity-50"}
                 >
                   Save Outfit
                 </Button>
@@ -238,7 +321,7 @@ export const AddOutfitDialog = () => {
                   </>
                 )}
               </div>
-            </div>
+            </form>
             <span className="agdasima-regular mx-auto text-sm font-light tracking-wider uppercase opacity-50">
               Changed your mind?{" "}
               <DialogClose className={"uppercase underline-offset-2 hover:underline"}>

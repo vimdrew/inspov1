@@ -3,6 +3,16 @@ import { defineRelations } from "drizzle-orm";
 import * as schema from "./";
 
 export const relations = defineRelations(schema, (r) => ({
-  // Define your relations here
-  // https://orm.drizzle.team/docs/relations-v2
+  user: {
+    outfits: r.many.outfits({
+      from: r.user.id,
+      to: r.outfits.userId,
+    }),
+  },
+  outfits: {
+    owner: r.one.user({
+      from: r.outfits.userId,
+      to: r.user.id,
+    }),
+  },
 }));

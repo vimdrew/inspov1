@@ -49,6 +49,7 @@
     "@varlock/vite-integration": "1.5.2",
     "better-auth": "1.7.5",
     "class-variance-authority": "0.7.1",
+    "cloudinary": "2.11.0",
     "cn": "0.3.0",
     "drizzle-orm": "1.0.0-rc.4",
     "lucide-react": "1.46.0",
