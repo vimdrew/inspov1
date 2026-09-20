@@ -9,21 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as GuestRouteRouteImport } from './routes/_guest/route'
 import { Route as AuthHasAddButtonRouteRouteImport } from './routes/_auth/_hasAddButton/route'
 import { Route as GuestLoginRouteImport } from './routes/_guest/login'
 import { Route as GuestSignupRouteImport } from './routes/_guest/signup'
-import { Route as AuthHasAddButtonAppRouteRouteImport } from './routes/_auth/_hasAddButton/app/route'
+import { Route as AuthHasAddButtonIndexRouteImport } from './routes/_auth/_hasAddButton/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AuthHasAddButtonAppIndexRouteImport } from './routes/_auth/_hasAddButton/app/index'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRouteRoute = AuthRouteRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRouteImport,
@@ -46,71 +39,56 @@ const GuestSignupRoute = GuestSignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => GuestRouteRoute,
 } as any)
-const AuthHasAddButtonAppRouteRoute =
-  AuthHasAddButtonAppRouteRouteImport.update({
-    id: '/app',
-    path: '/app',
-    getParentRoute: () => AuthHasAddButtonRouteRoute,
-  } as any)
+const AuthHasAddButtonIndexRoute = AuthHasAddButtonIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthHasAddButtonRouteRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthHasAddButtonAppIndexRoute =
-  AuthHasAddButtonAppIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthHasAddButtonAppRouteRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthHasAddButtonIndexRoute
   '/login': typeof GuestLoginRoute
   '/signup': typeof GuestSignupRoute
-  '/app': typeof AuthHasAddButtonAppRouteRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/app/': typeof AuthHasAddButtonAppIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof AuthHasAddButtonIndexRoute
   '/login': typeof GuestLoginRoute
   '/signup': typeof GuestSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/app': typeof AuthHasAddButtonAppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_auth': typeof AuthRouteRouteWithChildren
   '/_guest': typeof GuestRouteRouteWithChildren
   '/_auth/_hasAddButton': typeof AuthHasAddButtonRouteRouteWithChildren
   '/_guest/login': typeof GuestLoginRoute
   '/_guest/signup': typeof GuestSignupRoute
-  '/_auth/_hasAddButton/app': typeof AuthHasAddButtonAppRouteRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/_auth/_hasAddButton/app/': typeof AuthHasAddButtonAppIndexRoute
+  '/_auth/_hasAddButton/': typeof AuthHasAddButtonIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup' | '/app' | '/api/auth/$' | '/app/'
+  fullPaths: '/' | '/login' | '/signup' | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/api/auth/$' | '/app'
+  to: '/' | '/login' | '/signup' | '/api/auth/$'
   id:
     | '__root__'
-    | '/'
     | '/_auth'
     | '/_guest'
     | '/_auth/_hasAddButton'
     | '/_guest/login'
     | '/_guest/signup'
-    | '/_auth/_hasAddButton/app'
     | '/api/auth/$'
-    | '/_auth/_hasAddButton/app/'
+    | '/_auth/_hasAddButton/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   GuestRouteRoute: typeof GuestRouteRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -118,13 +96,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_auth': {
       id: '/_auth'
       path: ''
@@ -160,11 +131,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuestSignupRouteImport
       parentRoute: typeof GuestRouteRoute
     }
-    '/_auth/_hasAddButton/app': {
-      id: '/_auth/_hasAddButton/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AuthHasAddButtonAppRouteRouteImport
+    '/_auth/_hasAddButton/': {
+      id: '/_auth/_hasAddButton/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthHasAddButtonIndexRouteImport
       parentRoute: typeof AuthHasAddButtonRouteRoute
     }
     '/api/auth/$': {
@@ -174,36 +145,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth/_hasAddButton/app/': {
-      id: '/_auth/_hasAddButton/app/'
-      path: '/'
-      fullPath: '/app/'
-      preLoaderRoute: typeof AuthHasAddButtonAppIndexRouteImport
-      parentRoute: typeof AuthHasAddButtonAppRouteRoute
-    }
   }
 }
-
-interface AuthHasAddButtonAppRouteRouteChildren {
-  AuthHasAddButtonAppIndexRoute: typeof AuthHasAddButtonAppIndexRoute
-}
-
-const AuthHasAddButtonAppRouteRouteChildren: AuthHasAddButtonAppRouteRouteChildren =
-  {
-    AuthHasAddButtonAppIndexRoute: AuthHasAddButtonAppIndexRoute,
-  }
-
-const AuthHasAddButtonAppRouteRouteWithChildren =
-  AuthHasAddButtonAppRouteRoute._addFileChildren(
-    AuthHasAddButtonAppRouteRouteChildren,
-  )
 
 interface AuthHasAddButtonRouteRouteChildren {
-  AuthHasAddButtonAppRouteRoute: typeof AuthHasAddButtonAppRouteRouteWithChildren
+  AuthHasAddButtonIndexRoute: typeof AuthHasAddButtonIndexRoute
 }
 
 const AuthHasAddButtonRouteRouteChildren: AuthHasAddButtonRouteRouteChildren = {
-  AuthHasAddButtonAppRouteRoute: AuthHasAddButtonAppRouteRouteWithChildren,
+  AuthHasAddButtonIndexRoute: AuthHasAddButtonIndexRoute,
 }
 
 const AuthHasAddButtonRouteRouteWithChildren =
@@ -238,7 +188,6 @@ const GuestRouteRouteWithChildren = GuestRouteRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AuthRouteRoute: AuthRouteRouteWithChildren,
   GuestRouteRoute: GuestRouteRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

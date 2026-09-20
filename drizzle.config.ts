@@ -1,5 +1,9 @@
+import { setDefaultAutoSelectFamily } from "node:net";
+
 import type { Config } from "drizzle-kit";
 import { ENV } from "varlock/env";
+
+setDefaultAutoSelectFamily(false);
 
 export default {
   out: "./drizzle",

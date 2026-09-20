@@ -33,3 +33,26 @@ export const parseImageUrl = (url: string): ParsedImageUrl => {
 
   return { url, folder, publicId };
 };
+
+/**
+ * Returns the image resized to the given width, preserving its aspect ratio.
+ * `c_limit` only ever shrinks, never crops or upscales.
+ */
+export const fitImageUrl = (url: string, width: number): string => {
+  const parsed = new URL(url);
+  if (parsed.hostname !== "res.cloudinary.com") {
+    throw new Error("Invalid Cloudinary URL");
+  }
+
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const uploadIndex = segments.indexOf("upload");
+  if (uploadIndex === -1) {
+    throw new Error("Invalid Cloudinary URL");
+  }
+
+  const transform = `c_limit,w_${width},f_auto,q_auto`;
+  segments.splice(uploadIndex + 1, 0, transform);
+  parsed.pathname = `/${segments.join("/")}`;
+
+  return parsed.toString();
+};

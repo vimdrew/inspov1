@@ -54,6 +54,7 @@ export const AddOutfitDialog = () => {
   const [image, setImage] = useState<SelectedImage | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<SelectedImage | null>(null);
 
@@ -100,6 +101,7 @@ export const AddOutfitDialog = () => {
   const resetState = () => {
     form.reset();
     setDragActive(false);
+    setImageError(null);
     clearImage();
   };
 
@@ -114,19 +116,14 @@ export const AddOutfitDialog = () => {
   const handleFile = (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.add({
-        type: "error",
-        description: "Only image files can be added.",
-      });
+      setImageError("Only image files can be added.");
       return;
     }
     if (file.size > MAX_IMAGE_SIZE) {
-      toast.add({
-        type: "error",
-        description: "Image is too large. Keep it under 10 MB.",
-      });
+      setImageError("Image is too large. Keep it under 10 MB.");
       return;
     }
+    setImageError(null);
     abandonCurrentImage();
     const upload = uploadToCloudinary(file).catch(() => {
       toast.add({ type: "error", description: "Image upload failed." });
@@ -171,10 +168,7 @@ export const AddOutfitDialog = () => {
     onSubmit: async ({ value }) => {
       const img = imageRef.current;
       if (!img) {
-        toast.add({
-          type: "error",
-          description: "Add a photo of your outfit first.",
-        });
+        setImageError("Add a photo of your outfit first.");
         return;
       }
       setSaving(true);
@@ -271,6 +265,7 @@ export const AddOutfitDialog = () => {
                     </span>
                   </div>
                 </button>
+                {imageError ? <p className="text-[10px] text-red-500">{imageError}</p> : null}
 
                 <form.Field
                   name="name"

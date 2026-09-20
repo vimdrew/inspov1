@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { authMiddleware, freshAuthMiddleware } from "#/lib/auth/middleware.ts";
 import { db } from "#/lib/db/index.ts";
@@ -56,3 +56,7 @@ export const $deleteOrphanImage = createServerFn({ method: "POST" })
     await destroyImage(imageUrl.publicId);
     return { deleted: true };
   });
+
+export const $listOutfits = createServerFn({ method: "GET" }).handler(async () => {
+  return db.select().from(outfits).orderBy(desc(outfits.createdAt));
+});
