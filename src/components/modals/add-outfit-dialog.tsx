@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { UploadIcon } from "lucide-react";
+import { Loader2Icon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ENV } from "varlock/env";
 import z from "zod";
@@ -13,7 +13,12 @@ import {
   DialogTrigger,
 } from "#/components/ui/dialog";
 import { toast } from "#/components/ui/toast";
-import { $createOutfit, $deleteOrphanImage, $getUploadSignature } from "#/lib/outfits/functions.ts";
+import {
+  $createOutfit,
+  $deleteOrphanImage,
+  $getUploadSignature,
+  $removeOutfitBackground,
+} from "#/lib/outfits/functions.ts";
 import { cn } from "#/lib/utils";
 
 import { Button } from "../ui/button";
@@ -24,7 +29,7 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 type SelectedImage = {
   file: File;
   url: string;
-  status: "uploading" | "saved";
+  status: "processing" | "uploading" | "saved";
   upload: Promise<{ secureUrl: string }>;
 };
 
@@ -48,6 +53,20 @@ const uploadToCloudinary = (file: File): Promise<{ secureUrl: string }> =>
       return res.json().then((data) => ({ secureUrl: data.secure_url as string }));
     });
   });
+
+const toBase64 = (bytes: ArrayBuffer): string => {
+  const binary = new Uint8Array(bytes).reduce((acc, byte) => acc + String.fromCharCode(byte), "");
+  return btoa(binary);
+};
+
+const base64ToBlob = (base64: string, type: string): Blob => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type });
+};
 
 export const AddOutfitDialog = () => {
   const [open, setOpen] = useState(false);
@@ -125,15 +144,40 @@ export const AddOutfitDialog = () => {
     }
     setImageError(null);
     abandonCurrentImage();
-    const upload = uploadToCloudinary(file).catch(() => {
-      toast.add({ type: "error", description: "Image upload failed." });
-      throw new Error("Image upload failed");
-    });
+    const originalUrl = URL.createObjectURL(file);
+    const upload = (async () => {
+      let target = file;
+      let previewUrl = originalUrl;
+      try {
+        const base64 = toBase64(await file.arrayBuffer());
+        const { imageBase64 } = await $removeOutfitBackground({
+          data: { name: file.name, type: file.type, imageBase64: base64 },
+        });
+        if (imageBase64) {
+          target = new File([base64ToBlob(imageBase64, "image/png")], `${file.name}.png`, {
+            type: "image/png",
+          });
+          previewUrl = URL.createObjectURL(target);
+        }
+      } catch {
+        // Background removal unavailable — fall back to the original image.
+      }
+      setImage((prev) => {
+        if (prev && prev.url !== previewUrl) {
+          URL.revokeObjectURL(prev.url);
+        }
+        return prev ? { ...prev, url: previewUrl, status: "uploading" } : prev;
+      });
+      return uploadToCloudinary(target).catch(() => {
+        toast.add({ type: "error", description: "Image upload failed." });
+        throw new Error("Image upload failed");
+      });
+    })();
     setImage((prev) => {
       if (prev) {
         URL.revokeObjectURL(prev.url);
       }
-      return { file, url: URL.createObjectURL(file), status: "uploading", upload };
+      return { file, url: originalUrl, status: "processing", upload };
     });
   };
 
@@ -253,6 +297,14 @@ export const AddOutfitDialog = () => {
                       className="absolute inset-0 h-full max-h-full w-full rounded-sm object-contain lg:hidden"
                     />
                   ) : null}
+                  {image?.status === "processing" ? (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#e9e6e1]/80 lg:hidden">
+                      <Loader2Icon size={18} strokeWidth={3} className="animate-spin" />
+                      <span className="agdasima-regular text-xs tracking-widest uppercase">
+                        Removing background…
+                      </span>
+                    </div>
+                  ) : null}
                   <div
                     className={cn(
                       "pointer-events-none flex flex-col items-center justify-center gap-4",
@@ -315,6 +367,14 @@ export const AddOutfitDialog = () => {
                     </span>
                   </>
                 )}
+                {image?.status === "processing" ? (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#e9e6e1]/80">
+                    <Loader2Icon size={18} strokeWidth={3} className="animate-spin" />
+                    <span className="agdasima-regular text-xs tracking-widest uppercase">
+                      Removing background…
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </form>
             <span className="agdasima-regular mx-auto text-sm font-light tracking-wider uppercase opacity-50">

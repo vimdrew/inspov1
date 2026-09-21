@@ -5,9 +5,12 @@ import { authMiddleware, freshAuthMiddleware } from "#/lib/auth/middleware.ts";
 import { db } from "#/lib/db/index.ts";
 import { outfits } from "#/lib/db/schema/outfit.schema.ts";
 
+import { removeBackground } from "./background.server";
 import { destroyImage, signUpload } from "./cloudinary.server";
 import { parseImageUrl } from "./image-url";
 import { createOutfitSchema } from "./schemas";
+
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
 export const $getUploadSignature = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -66,4 +69,22 @@ export const $getOutfit = createServerFn({ method: "GET" })
   .handler(async ({ data: outfitId }) => {
     const [outfit] = await db.select().from(outfits).where(eq(outfits.id, outfitId));
     return outfit ?? null;
+  });
+
+export const $removeOutfitBackground = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: { name: string; type: string; imageBase64: string }) => data)
+  .handler(async ({ data }) => {
+    if (!data.type.startsWith("image/")) {
+      throw new Error("Invalid image type");
+    }
+
+    const bytes = Buffer.from(data.imageBase64, "base64");
+    if (bytes.length > MAX_IMAGE_SIZE) {
+      throw new Error("Image is too large");
+    }
+
+    const result = await removeBackground(bytes, data.name, data.type);
+
+    return { imageBase64: result ? Buffer.from(result).toString("base64") : null };
   });
