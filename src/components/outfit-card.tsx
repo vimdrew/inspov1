@@ -11,7 +11,7 @@ type OutfitCardProps = {
 export function OutfitCard({ id, name, image }: OutfitCardProps) {
   return (
     <Link
-      to="/$outfitId"
+      to="/o/$outfitId"
       params={{ outfitId: id }}
       aria-label={`View ${name}`}
       className="group block"

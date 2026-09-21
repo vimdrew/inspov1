@@ -1,6 +1,22 @@
 import { z } from "zod";
 
-export const createOutfitSchema = z.object({
+export const outfitNameSchema = z.object({
   name: z.string().min(1, "Give your outfit a name").max(120),
+});
+
+export const createOutfitSchema = outfitNameSchema.extend({
+  imageUrl: z.url(),
+});
+
+export const updateOutfitSchema = outfitNameSchema.extend({
+  outfitId: z.string(),
+  imageUrl: z.url().optional(),
+});
+
+export const resolveOutfitLinkSchema = z.object({
+  url: z.url(),
+});
+
+export const importOutfitImageSchema = z.object({
   imageUrl: z.url(),
 });

@@ -1,12 +1,18 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { noop, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { VideoIcon } from "lucide-react";
 
+import { AddLinkOutfitDialog } from "#/components/modals/add-link-outfit-dialog.tsx";
 import { OutfitCard } from "#/components/outfit-card.tsx";
+import { Button } from "#/components/ui/button.tsx";
 import { authClient } from "#/lib/auth/auth-client.ts";
 import { authQueryOptions } from "#/lib/auth/queries.ts";
 import { outfitsQueryOptions } from "#/lib/outfits/queries.ts";
 
 export const Route = createFileRoute("/_auth/_hasAddButton/")({
+  loader: ({ context }) => {
+    void context.queryClient.query(outfitsQueryOptions()).catch(noop);
+  },
   head: () => ({
     meta: [
       { title: "Inspo — Browse outfits" },
@@ -38,7 +44,25 @@ function BrowsePage() {
           <EmptyState />
         )}
       </main>
+      <HomeActionButtons />
     </div>
+  );
+}
+
+function HomeActionButtons() {
+  return (
+    <>
+      <AddLinkOutfitDialog />
+      <Button
+        type="button"
+        disabled
+        aria-label="Add outfit video"
+        variant="outline"
+        className="fixed bottom-4 left-1/2 z-20 h-10 w-10 translate-x-[2.25rem] rounded-none border-border bg-background/80 text-foreground/50 backdrop-blur"
+      >
+        <VideoIcon />
+      </Button>
+    </>
   );
 }
 

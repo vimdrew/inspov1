@@ -1,7 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { Loader2Icon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ENV } from "varlock/env";
 import z from "zod";
 
 import {
@@ -13,60 +12,23 @@ import {
   DialogTrigger,
 } from "#/components/ui/dialog";
 import { toast } from "#/components/ui/toast";
+import { $deleteOrphanImage, $removeOutfitBackground } from "#/lib/outfits/functions.ts";
 import {
-  $createOutfit,
-  $deleteOrphanImage,
-  $getUploadSignature,
-  $removeOutfitBackground,
-} from "#/lib/outfits/functions.ts";
+  MAX_IMAGE_SIZE,
+  type SelectedImage,
+  base64ToBlob,
+  toBase64,
+  uploadToCloudinary,
+} from "#/lib/outfits/upload.ts";
+import { useCreateOutfit } from "#/lib/outfits/use-create-outfit.ts";
 import { cn } from "#/lib/utils";
 
 import { Button } from "../ui/button";
 import { InputStyled } from "../ui/styled-input";
 
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-
-type SelectedImage = {
-  file: File;
-  url: string;
-  status: "processing" | "uploading" | "saved";
-  upload: Promise<{ secureUrl: string }>;
-};
-
 const createOutfitSchema = z.object({
   name: z.string().min(1, "Give your outfit a name"),
 });
-
-const uploadToCloudinary = (file: File): Promise<{ secureUrl: string }> =>
-  $getUploadSignature().then(({ timestamp, signature, folder }) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("api_key", ENV.CLOUDINARY_API_KEY);
-    formData.append("timestamp", String(timestamp));
-    formData.append("signature", signature);
-    formData.append("folder", folder);
-    return fetch(`https://api.cloudinary.com/v1_1/${ENV.CLOUDINARY_CLOUD_NAME}/image/upload`, {
-      method: "POST",
-      body: formData,
-    }).then((res) => {
-      if (!res.ok) throw new Error("Upload failed");
-      return res.json().then((data) => ({ secureUrl: data.secure_url as string }));
-    });
-  });
-
-const toBase64 = (bytes: ArrayBuffer): string => {
-  const binary = new Uint8Array(bytes).reduce((acc, byte) => acc + String.fromCharCode(byte), "");
-  return btoa(binary);
-};
-
-const base64ToBlob = (base64: string, type: string): Blob => {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Blob([bytes], { type });
-};
 
 export const AddOutfitDialog = () => {
   const [open, setOpen] = useState(false);
@@ -76,6 +38,7 @@ export const AddOutfitDialog = () => {
   const [imageError, setImageError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<SelectedImage | null>(null);
+  const createMutation = useCreateOutfit();
 
   useEffect(() => {
     imageRef.current = image;
@@ -218,17 +181,14 @@ export const AddOutfitDialog = () => {
       setSaving(true);
       try {
         const { secureUrl } = await img.upload;
-        await $createOutfit({ data: { name: value.name, imageUrl: secureUrl } });
+        await createMutation.mutateAsync({ name: value.name, imageUrl: secureUrl });
         img.status = "saved";
         imageRef.current = null;
-        toast.add({ type: "success", description: "Outfit saved." });
         resetState();
         setOpen(false);
+        toast.add({ type: "success", description: "Outfit saved." });
       } catch {
-        toast.add({
-          type: "error",
-          description: "Could not save your outfit. Try again.",
-        });
+        toast.add({ type: "error", description: "Could not save your outfit. Try again." });
       } finally {
         setSaving(false);
       }
@@ -250,13 +210,15 @@ export const AddOutfitDialog = () => {
               }}
               variant={"secondary"}
               className={
-                "fixed bottom-4 left-1/2 aspect-square h-12 -translate-x-1/2 rounded-sm hover:scale-94"
+                "fixed bottom-4 left-1/2 aspect-square h-12 -translate-x-1/2 rounded-none hover:scale-94"
               }
             />
           }
         />
         <DialogContent
-          className={"no-scrollbar h-[80svh] max-h-[90vh] overflow-y-auto rounded-xs lg:max-w-2xl"}
+          className={
+            "no-scrollbar h-[80svh] max-h-[90vh] overflow-y-auto rounded-none lg:max-w-2xl"
+          }
         >
           <div className="flex min-h-0 flex-1 flex-col gap-6">
             <DialogHeader>
@@ -294,7 +256,7 @@ export const AddOutfitDialog = () => {
                     <img
                       src={image.url}
                       alt="Selected outfit"
-                      className="absolute inset-0 h-full max-h-full w-full rounded-sm object-contain lg:hidden"
+                      className="absolute inset-0 h-full max-h-full w-full rounded-none object-contain lg:hidden"
                     />
                   ) : null}
                   {image?.status === "processing" ? (
@@ -345,17 +307,17 @@ export const AddOutfitDialog = () => {
                 <Button
                   type="submit"
                   disabled={saving}
-                  className={"agdasima-bold h-9 rounded-xs text-xs uppercase disabled:opacity-50"}
+                  className={"agdasima-bold h-9 rounded-none text-xs uppercase disabled:opacity-50"}
                 >
                   Save Outfit
                 </Button>
               </div>
-              <div className="relative hidden min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-xs border bg-[#e9e6e1] p-4 text-black lg:flex">
+              <div className="relative hidden min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-none border bg-[#e9e6e1] p-4 text-black lg:flex">
                 {image ? (
                   <img
                     src={image.url}
                     alt="Selected outfit"
-                    className="absolute inset-0 h-full max-h-full w-full rounded-xs object-contain"
+                    className="absolute inset-0 h-full max-h-full w-full rounded-none object-contain"
                   />
                 ) : (
                   <>

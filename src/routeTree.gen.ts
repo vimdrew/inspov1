@@ -15,8 +15,8 @@ import { Route as AuthHasAddButtonRouteRouteImport } from './routes/_auth/_hasAd
 import { Route as GuestLoginRouteImport } from './routes/_guest/login'
 import { Route as GuestSignupRouteImport } from './routes/_guest/signup'
 import { Route as AuthHasAddButtonIndexRouteImport } from './routes/_auth/_hasAddButton/index'
-import { Route as AuthHasAddButtonOutfitIdRouteImport } from './routes/_auth/_hasAddButton/$outfitId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthHasAddButtonOOutfitIdRouteImport } from './routes/_auth/_hasAddButton/o/$outfitId'
 
 const AuthRouteRoute = AuthRouteRouteImport.update({
   id: '/_auth',
@@ -45,31 +45,31 @@ const AuthHasAddButtonIndexRoute = AuthHasAddButtonIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthHasAddButtonRouteRoute,
 } as any)
-const AuthHasAddButtonOutfitIdRoute =
-  AuthHasAddButtonOutfitIdRouteImport.update({
-    id: '/$outfitId',
-    path: '/$outfitId',
-    getParentRoute: () => AuthHasAddButtonRouteRoute,
-  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthHasAddButtonOOutfitIdRoute =
+  AuthHasAddButtonOOutfitIdRouteImport.update({
+    id: '/o/$outfitId',
+    path: '/o/$outfitId',
+    getParentRoute: () => AuthHasAddButtonRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthHasAddButtonIndexRoute
   '/login': typeof GuestLoginRoute
   '/signup': typeof GuestSignupRoute
-  '/$outfitId': typeof AuthHasAddButtonOutfitIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/o/$outfitId': typeof AuthHasAddButtonOOutfitIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthHasAddButtonIndexRoute
   '/login': typeof GuestLoginRoute
   '/signup': typeof GuestSignupRoute
-  '/$outfitId': typeof AuthHasAddButtonOutfitIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/o/$outfitId': typeof AuthHasAddButtonOOutfitIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,15 +78,15 @@ export interface FileRoutesById {
   '/_auth/_hasAddButton': typeof AuthHasAddButtonRouteRouteWithChildren
   '/_guest/login': typeof GuestLoginRoute
   '/_guest/signup': typeof GuestSignupRoute
-  '/_auth/_hasAddButton/$outfitId': typeof AuthHasAddButtonOutfitIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_auth/_hasAddButton/': typeof AuthHasAddButtonIndexRoute
+  '/_auth/_hasAddButton/o/$outfitId': typeof AuthHasAddButtonOOutfitIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup' | '/$outfitId' | '/api/auth/$'
+  fullPaths: '/' | '/login' | '/signup' | '/api/auth/$' | '/o/$outfitId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/$outfitId' | '/api/auth/$'
+  to: '/' | '/login' | '/signup' | '/api/auth/$' | '/o/$outfitId'
   id:
     | '__root__'
     | '/_auth'
@@ -94,9 +94,9 @@ export interface FileRouteTypes {
     | '/_auth/_hasAddButton'
     | '/_guest/login'
     | '/_guest/signup'
-    | '/_auth/_hasAddButton/$outfitId'
     | '/api/auth/$'
     | '/_auth/_hasAddButton/'
+    | '/_auth/_hasAddButton/o/$outfitId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -149,13 +149,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthHasAddButtonIndexRouteImport
       parentRoute: typeof AuthHasAddButtonRouteRoute
     }
-    '/_auth/_hasAddButton/$outfitId': {
-      id: '/_auth/_hasAddButton/$outfitId'
-      path: '/$outfitId'
-      fullPath: '/$outfitId'
-      preLoaderRoute: typeof AuthHasAddButtonOutfitIdRouteImport
-      parentRoute: typeof AuthHasAddButtonRouteRoute
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -163,17 +156,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_auth/_hasAddButton/o/$outfitId': {
+      id: '/_auth/_hasAddButton/o/$outfitId'
+      path: '/o/$outfitId'
+      fullPath: '/o/$outfitId'
+      preLoaderRoute: typeof AuthHasAddButtonOOutfitIdRouteImport
+      parentRoute: typeof AuthHasAddButtonRouteRoute
+    }
   }
 }
 
 interface AuthHasAddButtonRouteRouteChildren {
-  AuthHasAddButtonOutfitIdRoute: typeof AuthHasAddButtonOutfitIdRoute
   AuthHasAddButtonIndexRoute: typeof AuthHasAddButtonIndexRoute
+  AuthHasAddButtonOOutfitIdRoute: typeof AuthHasAddButtonOOutfitIdRoute
 }
 
 const AuthHasAddButtonRouteRouteChildren: AuthHasAddButtonRouteRouteChildren = {
-  AuthHasAddButtonOutfitIdRoute: AuthHasAddButtonOutfitIdRoute,
   AuthHasAddButtonIndexRoute: AuthHasAddButtonIndexRoute,
+  AuthHasAddButtonOOutfitIdRoute: AuthHasAddButtonOOutfitIdRoute,
 }
 
 const AuthHasAddButtonRouteRouteWithChildren =
