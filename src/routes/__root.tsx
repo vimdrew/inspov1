@@ -30,14 +30,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         name: "description",
-        content: "A TanStack Start project scaffolded with create-mugnavo.",
       },
     ],
     links: [
       // Replace with your icons here, or remove if you have a favicon.ico in public/
       {
         rel: "icon",
-        href: "https://mugnavo.com/favicon.ico",
+        href: "/logo.svg",
       },
       { rel: "stylesheet", href: appCss },
     ],
