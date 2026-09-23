@@ -88,7 +88,7 @@ function OutfitDetailPage() {
         <span className="max-w-[14rem] truncate text-foreground">{outfit ? outfit.name : "…"}</span>
       </nav>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center px-4 pt-2 pb-16 md:px-12">
+      <main className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center px-4 pt-2 pb-24 md:px-12 md:pb-16">
         {isPending ? (
           <DetailSkeleton />
         ) : outfit?.image ? (
