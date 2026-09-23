@@ -15,9 +15,9 @@ import { toast } from "#/components/ui/toast";
 import { $deleteOrphanImage, $removeOutfitBackground } from "#/lib/outfits/functions.ts";
 import { randomOutfitName } from "#/lib/outfits/random-name.ts";
 import {
+  base64ToBlob,
   MAX_IMAGE_SIZE,
   type SelectedImage,
-  base64ToBlob,
   toBase64,
   uploadToCloudinary,
 } from "#/lib/outfits/upload.ts";
@@ -187,14 +187,20 @@ export const AddOutfitDialog = () => {
       setSaving(true);
       try {
         const { secureUrl } = await img.upload;
-        await createMutation.mutateAsync({ name: value.name, imageUrl: secureUrl });
+        await createMutation.mutateAsync({
+          name: value.name,
+          imageUrl: secureUrl,
+        });
         img.status = "saved";
         imageRef.current = null;
         resetState();
         setOpen(false);
         toast.add({ type: "success", description: "Outfit saved." });
       } catch {
-        toast.add({ type: "error", description: "Could not save your outfit. Try again." });
+        toast.add({
+          type: "error",
+          description: "Could not save your outfit. Try again.",
+        });
       } finally {
         setSaving(false);
       }
@@ -216,7 +222,7 @@ export const AddOutfitDialog = () => {
               }}
               variant={"secondary"}
               className={
-                "fixed bottom-4 left-1/2 aspect-square h-12 -translate-x-1/2 rounded-none hover:scale-94"
+                "fixed bottom-4 left-1/2 z-1000 aspect-square h-12 -translate-x-1/2 rounded-none hover:scale-94"
               }
             />
           }
