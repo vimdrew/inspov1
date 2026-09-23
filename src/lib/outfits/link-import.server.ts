@@ -7,6 +7,23 @@ import { fetchFollowingSafeRedirects } from "./link-security";
 const MAX_IMPORT_IMAGES = 20;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
+/**
+ * TikTok strips photo-post slide data (`imagePost.images`) from desktop and
+ * headless requests (botType "others"); a mobile Web user agent gets the full
+ * payload. See https://github.com/inspov1 issue — verified against a live
+ * slideshow post on 2026-09-23.
+ */
+const MOBILE_BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-Dest": "document",
+  "Upgrade-Insecure-Requests": "1",
+};
+
 export class OutfitLinkError extends Error {
   constructor(message: string) {
     super(message);
@@ -17,16 +34,21 @@ export class OutfitLinkError extends Error {
 const isHtml = (response: Response) =>
   (response.headers.get("content-type") ?? "").startsWith("text/html");
 
-async function readPage(url: string): Promise<string> {
-  const { response } = await fetchFollowingSafeRedirects(url);
+type FetchInit = RequestInit & { redirect?: "manual" };
+
+async function readPage(url: string, init?: FetchInit): Promise<string> {
+  const { response } = await fetchFollowingSafeRedirects(url, init);
   if (!response.ok || !isHtml(response)) {
     throw new OutfitLinkError("That link didn't return a page we could read");
   }
   return response.text();
 }
 
-async function readPageAfterRedirects(input: string): Promise<{ html: string; finalUrl: string }> {
-  const { response, url: finalUrl } = await fetchFollowingSafeRedirects(input);
+async function readPageAfterRedirects(
+  input: string,
+  init?: FetchInit,
+): Promise<{ html: string; finalUrl: string }> {
+  const { response, url: finalUrl } = await fetchFollowingSafeRedirects(input, init);
   if (!response.ok || !isHtml(response)) {
     throw new OutfitLinkError("That link didn't return a page we could read");
   }
@@ -60,11 +82,14 @@ export async function resolveOutfitLink(input: string): Promise<ResolvedOutfitLi
   if (kind === "tiktok" || kind === "tiktok-photo") {
     // Short links (vm./vt.tiktok.com) land on a stub page, so once the chain
     // resolves we re-fetch the final URL for the mounted-embed markup.
-    const first = await readPageAfterRedirects(input);
+    // The mobile-UA request is required: desktop fetches get a bot-stripped
+    // page without `imagePost.images` even when the post is a slideshow.
+    const headers = MOBILE_BROWSER_HEADERS;
+    const first = await readPageAfterRedirects(input, { headers });
     let images = parseTikTokImages(first.html);
 
     if (images.length === 0) {
-      const final = await readPage(first.finalUrl);
+      const final = await readPage(first.finalUrl, { headers });
       images = parseTikTokImages(final);
     }
 

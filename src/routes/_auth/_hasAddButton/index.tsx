@@ -1,6 +1,7 @@
-import { noop, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { VideoIcon } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { AddLinkOutfitDialog } from "#/components/modals/add-link-outfit-dialog.tsx";
 import { OutfitCard } from "#/components/outfit-card.tsx";
@@ -10,8 +11,11 @@ import { authQueryOptions } from "#/lib/auth/queries.ts";
 import { outfitsQueryOptions } from "#/lib/outfits/queries.ts";
 
 export const Route = createFileRoute("/_auth/_hasAddButton/")({
-  loader: ({ context }) => {
-    void context.queryClient.query(outfitsQueryOptions()).catch(noop);
+  loader: async ({ context }) => {
+    // The gallery is the primary view, so block on the list before hydration.
+    // Deferring it would dehydrate a pending query on the server and reject
+    // with CancelledError when the SSR request tears down.
+    await context.queryClient.query(outfitsQueryOptions());
   },
   head: () => ({
     meta: [
@@ -27,6 +31,21 @@ export const Route = createFileRoute("/_auth/_hasAddButton/")({
 
 function BrowsePage() {
   const { data: outfits, isPending } = useQuery(outfitsQueryOptions());
+  const [sort, setSort] = useState<"topRated" | "newest">("topRated");
+
+  const sortedOutfits = useMemo(() => {
+    if (!outfits) return outfits;
+    if (sort === "newest") {
+      return [...outfits].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    }
+    return [...outfits].sort((a, b) => {
+      const byRating = (b.rating ?? -1) - (a.rating ?? -1);
+      if (byRating !== 0) return byRating;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [outfits, sort]);
 
   return (
     <div className="min-h-svh bg-background">
@@ -34,17 +53,66 @@ function BrowsePage() {
       <main>
         {isPending ? (
           <OutfitGridSkeleton />
-        ) : outfits?.length ? (
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-4">
-            {outfits.map((outfit) => (
-              <OutfitCard key={outfit.id} id={outfit.id} name={outfit.name} image={outfit.image} />
-            ))}
-          </div>
+        ) : sortedOutfits?.length ? (
+          <>
+            <SortPicker value={sort} onChange={setSort} />
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-4">
+              {sortedOutfits.map((outfit) => (
+                <OutfitCard
+                  key={outfit.id}
+                  id={outfit.id}
+                  name={outfit.name}
+                  image={outfit.image}
+                  rating={outfit.rating}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <EmptyState />
         )}
       </main>
       <HomeActionButtons />
+    </div>
+  );
+}
+
+type SortValue = "topRated" | "newest";
+
+const SORT_OPTIONS: { value: SortValue; label: string }[] = [
+  { value: "topRated", label: "Top rated" },
+  { value: "newest", label: "Newest" },
+];
+
+function SortPicker({
+  value,
+  onChange,
+}: {
+  value: SortValue;
+  onChange: (next: SortValue) => void;
+}) {
+  return (
+    <div className="mx-auto flex max-w-5xl justify-end px-4 pt-4 md:px-12">
+      <div className="flex border border-border">
+        {SORT_OPTIONS.map((option) => {
+          const selected = option.value === value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(option.value)}
+              className={
+                selected
+                  ? "agdasima-regular bg-foreground px-3 py-1 text-[11px] tracking-[0.2em] text-background uppercase"
+                  : "agdasima-regular bg-background px-3 py-1 text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+              }
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

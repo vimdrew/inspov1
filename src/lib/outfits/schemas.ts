@@ -13,6 +13,11 @@ export const updateOutfitSchema = outfitNameSchema.extend({
   imageUrl: z.url().optional(),
 });
 
+export const rateOutfitSchema = z.object({
+  outfitId: z.string(),
+  rating: z.number().int().min(1).max(5).nullable(),
+});
+
 export const resolveOutfitLinkSchema = z.object({
   url: z.url(),
 });

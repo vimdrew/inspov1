@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { setResponseStatus } from "@tanstack/react-start/server";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 import { authMiddleware, freshAuthMiddleware } from "#/lib/auth/middleware.ts";
 import { db } from "#/lib/db/index.ts";
@@ -14,6 +14,7 @@ import { importImageLimiter, resolveLinkLimiter } from "./rate-limit";
 import {
   createOutfitSchema,
   importOutfitImageSchema,
+  rateOutfitSchema,
   resolveOutfitLinkSchema,
   updateOutfitSchema,
 } from "./schemas";
@@ -73,7 +74,12 @@ export const $deleteOrphanImage = createServerFn({ method: "POST" })
   });
 
 export const $listOutfits = createServerFn({ method: "GET" }).handler(async () => {
-  return db.select().from(outfits).orderBy(desc(outfits.createdAt));
+  // Ranked outfits first (higher stars on top), then newest first; unrated
+  // (NULL) sink to the bottom.
+  return db
+    .select()
+    .from(outfits)
+    .orderBy(sql`${outfits.rating} desc nulls last`, desc(outfits.createdAt));
 });
 
 export const $getOutfit = createServerFn({ method: "GET" })
@@ -139,6 +145,32 @@ export const $updateOutfit = createServerFn({ method: "POST" })
       } catch (error) {
         console.error("Failed to remove replaced outfit image from Cloudinary:", error);
       }
+    }
+
+    return updated;
+  });
+
+export const $rateOutfit = createServerFn({ method: "POST" })
+  .middleware([freshAuthMiddleware])
+  .validator(rateOutfitSchema)
+  .handler(async ({ context, data }) => {
+    const [outfit] = await db.select().from(outfits).where(eq(outfits.id, data.outfitId)).limit(1);
+
+    if (!outfit) {
+      throw new Error("Outfit not found");
+    }
+    if (outfit.userId !== context.user.id) {
+      throw new Error("Outfit belongs to another user");
+    }
+
+    const [updated] = await db
+      .update(outfits)
+      .set({ rating: data.rating })
+      .where(eq(outfits.id, data.outfitId))
+      .returning();
+
+    if (!updated) {
+      throw new Error("Failed to rate outfit");
     }
 
     return updated;

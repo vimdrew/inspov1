@@ -1,6 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { noop } from "@tanstack/react-query";
-import { CheckIcon, LinkIcon, Loader2Icon } from "lucide-react";
+import { CheckIcon, DicesIcon, LinkIcon, Loader2Icon } from "lucide-react";
 import { useState } from "react";
 import z from "zod";
 
@@ -18,6 +18,7 @@ import {
   $importOutfitImage,
   $resolveOutfitLink,
 } from "#/lib/outfits/functions.ts";
+import { randomOutfitName } from "#/lib/outfits/random-name.ts";
 import { useCreateOutfit } from "#/lib/outfits/use-create-outfit.ts";
 import { cn } from "#/lib/utils";
 
@@ -92,6 +93,9 @@ export const AddLinkOutfitDialog = () => {
         resolved.images.map((imageUrl) => ({ url: imageUrl, selected: true, state: "idle" })),
       );
       setDegraded(resolved.degraded);
+      if (!form.getFieldValue("name").trim()) {
+        form.setFieldValue("name", randomOutfitName());
+      }
       setStep("select");
     } catch (error) {
       setLinkError(error instanceof Error ? error.message : "We couldn't load that link.");
@@ -306,15 +310,26 @@ export const AddLinkOutfitDialog = () => {
                     children={(field) => {
                       return (
                         <div className="grid gap-2">
-                          <InputStyled
-                            value={field.state.value}
-                            onBlur={field.handleBlur}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            id="link-outfit-name"
-                            name="Name"
-                            placeholder="Summer fit, Date night…"
-                            className="bg-[#e9e6e1]"
-                          />
+                          <div className="flex items-start gap-2">
+                            <InputStyled
+                              value={field.state.value}
+                              onBlur={field.handleBlur}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              id="link-outfit-name"
+                              name="Name"
+                              placeholder="Summer fit, Date night…"
+                              className="bg-[#e9e6e1]"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              aria-label="Suggest a name"
+                              onClick={() => form.setFieldValue("name", randomOutfitName())}
+                              className="h-12 w-10 shrink-0 rounded-none border-border px-0"
+                            >
+                              <DicesIcon size={16} strokeWidth={3} />
+                            </Button>
+                          </div>
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-[10px] text-red-500">
                               {field.state.meta.errors[0]?.message}

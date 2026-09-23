@@ -1,9 +1,10 @@
 import { useForm } from "@tanstack/react-form";
-import { noop, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Loader2Icon, PencilIcon, Trash2Icon, UploadIcon } from "lucide-react";
+import { DicesIcon, Loader2Icon, PencilIcon, Trash2Icon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { OutfitRating } from "#/components/outfit-rating.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Dialog,
@@ -24,6 +25,7 @@ import {
 } from "#/lib/outfits/functions.ts";
 import { fitImageUrl } from "#/lib/outfits/image-url.ts";
 import { outfitsQueryOptions, outfitQueryOptions } from "#/lib/outfits/queries.ts";
+import { randomOutfitName } from "#/lib/outfits/random-name.ts";
 import { outfitNameSchema } from "#/lib/outfits/schemas.ts";
 import {
   MAX_IMAGE_SIZE,
@@ -35,8 +37,10 @@ import {
 import { cn } from "#/lib/utils.ts";
 
 export const Route = createFileRoute("/_auth/_hasAddButton/o/$outfitId")({
-  loader: ({ context, params }) => {
-    void context.queryClient.query(outfitQueryOptions(params.outfitId)).catch(noop);
+  loader: async ({ context, params }) => {
+    // Primary view; await so the query resolves before the SSR stream flushes
+    // (deferring it dehydrates a pending query that then rejects on teardown).
+    await context.queryClient.query(outfitQueryOptions(params.outfitId));
   },
   head: () => ({
     meta: [
@@ -60,6 +64,7 @@ type Outfit = {
   id: string;
   name: string;
   image: string | null;
+  rating: number | null;
   createdAt: string | Date;
 };
 
@@ -443,15 +448,26 @@ function EditOutfitDialog({
                 name="name"
                 children={(field) => (
                   <div className="grid gap-2">
-                    <InputStyled
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      id="edit-name"
-                      name="Outfit Name"
-                      className="bg-[#e9e6e1]"
-                      type="text"
-                    />
+                    <div className="flex items-start gap-2">
+                      <InputStyled
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        id="edit-name"
+                        name="Outfit Name"
+                        className="bg-[#e9e6e1]"
+                        type="text"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-label="Suggest a name"
+                        onClick={() => form.setFieldValue("name", randomOutfitName())}
+                        className="h-12 w-10 shrink-0 rounded-none border-border px-0"
+                      >
+                        <DicesIcon size={16} strokeWidth={3} />
+                      </Button>
+                    </div>
                     {field.state.meta.errors.length > 0 && (
                       <p className="text-[10px] text-red-500">
                         {field.state.meta.errors[0]?.message}
@@ -588,6 +604,10 @@ function OutfitInfoPanel({ outfit, className }: { outfit: Outfit; className?: st
           <p className="agdasima-regular mt-3 text-xs tracking-[0.2em] text-muted-foreground uppercase">
             Added {addedAtFormatter.format(new Date(outfit.createdAt))}
           </p>
+          <p className="agdasima-regular mt-3 text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+            Rate it
+          </p>
+          <OutfitRating outfitId={outfit.id} rating={outfit.rating} />
         </div>
         <div className="mt-10 hidden h-px w-14 bg-border md:block" />
       </div>

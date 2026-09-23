@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { Loader2Icon, UploadIcon } from "lucide-react";
+import { DicesIcon, Loader2Icon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import z from "zod";
 
@@ -13,6 +13,7 @@ import {
 } from "#/components/ui/dialog";
 import { toast } from "#/components/ui/toast";
 import { $deleteOrphanImage, $removeOutfitBackground } from "#/lib/outfits/functions.ts";
+import { randomOutfitName } from "#/lib/outfits/random-name.ts";
 import {
   MAX_IMAGE_SIZE,
   type SelectedImage,
@@ -89,7 +90,12 @@ export const AddOutfitDialog = () => {
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
-    if (!next) {
+    if (next) {
+      // A suggested name keeps the flow moving; type over it to name it yourself.
+      if (!form.getFieldValue("name").trim()) {
+        form.setFieldValue("name", randomOutfitName());
+      }
+    } else {
       abandonCurrentImage();
       resetState();
     }
@@ -286,15 +292,26 @@ export const AddOutfitDialog = () => {
                   children={(field) => {
                     return (
                       <div className="grid gap-2">
-                        <InputStyled
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          id="name"
-                          name="Outfit Name"
-                          className="bg-[#e9e6e1]"
-                          type="text"
-                        />
+                        <div className="flex items-start gap-2">
+                          <InputStyled
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            id="name"
+                            name="Outfit Name"
+                            className="bg-[#e9e6e1]"
+                            type="text"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            aria-label="Suggest a name"
+                            onClick={() => form.setFieldValue("name", randomOutfitName())}
+                            className="h-12 w-10 shrink-0 rounded-none border-border px-0"
+                          >
+                            <DicesIcon size={16} strokeWidth={3} />
+                          </Button>
+                        </div>
                         {field.state.meta.errors.length > 0 && (
                           <p className="text-[10px] text-red-500">
                             {field.state.meta.errors[0]?.message}
