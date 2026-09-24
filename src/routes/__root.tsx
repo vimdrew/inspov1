@@ -1,12 +1,21 @@
+import type { PluginListenerHandle } from "@capacitor/core";
 import { a11yDevtoolsPlugin } from "@tanstack/devtools-a11y/react";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
-import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Scripts,
+  useRouter,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { useEffect, useRef } from "react";
 
 import { ThemeProvider } from "#/components/theme-provider.tsx";
 import { Toaster } from "#/components/ui/toast.tsx";
+import { getSharedUrl, setSharedUrl } from "#/lib/capacitor/shared-link-store.ts";
+import { extractSharedUrl } from "#/lib/outfits/shared-link.ts";
 
 import appCss from "#/styles.css?url";
 
@@ -44,7 +53,51 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   shellComponent: RootDocument,
 });
 
+let lastHandledUrl: string | null = null;
+
 function RootDocument({ children }: { readonly children: React.ReactNode }) {
+  const router = useRouter();
+  const shareListenerRef = useRef<PluginListenerHandle | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+
+    void (async () => {
+      const { Capacitor } = await import("@capacitor/core");
+      if (disposed || !Capacitor.isNativePlatform()) return;
+      if (!Capacitor.isPluginAvailable("CapacitorShareTarget")) return;
+
+      const { CapacitorShareTarget } = await import("@capgo/capacitor-share-target");
+      if (disposed) return;
+
+      const handle = await CapacitorShareTarget.addListener("shareReceived", (event) => {
+        for (const text of event.texts) {
+          const url = extractSharedUrl(text);
+          if (!url || url === lastHandledUrl || url === getSharedUrl()) continue;
+          lastHandledUrl = url;
+          setSharedUrl(url);
+          if (router.state.location.pathname !== "/") {
+            void router.navigate({ to: "/" });
+          }
+          return;
+        }
+      });
+
+      if (disposed) {
+        await handle.remove().catch(() => {});
+        return;
+      }
+      shareListenerRef.current = handle;
+    })();
+
+    return () => {
+      disposed = true;
+      const handle = shareListenerRef.current;
+      shareListenerRef.current = null;
+      if (handle) void handle.remove().catch(() => {});
+    };
+  }, [router]);
+
   return (
     // suppress since we're updating the "dark" class in ThemeProvider
     <html lang="en" suppressHydrationWarning>

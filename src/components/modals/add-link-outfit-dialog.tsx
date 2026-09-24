@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { noop } from "@tanstack/react-query";
 import { CheckIcon, DicesIcon, LinkIcon, Loader2Icon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import z from "zod";
 
 import {
@@ -13,6 +13,11 @@ import {
   DialogTrigger,
 } from "#/components/ui/dialog";
 import { toast } from "#/components/ui/toast";
+import {
+  clearSharedUrl,
+  getSharedUrl,
+  subscribeSharedUrl,
+} from "#/lib/capacitor/shared-link-store.ts";
 import {
   $deleteOrphanImage,
   $importOutfitImage,
@@ -50,6 +55,18 @@ export const AddLinkOutfitDialog = () => {
   const [totalImport, setTotalImport] = useState(0);
 
   const createMutation = useCreateOutfit();
+
+  useEffect(() => {
+    const consumeSharedUrl = () => {
+      const pending = getSharedUrl();
+      if (!pending) return;
+      clearSharedUrl();
+      setUrl(pending);
+      setOpen(true);
+    };
+    consumeSharedUrl();
+    return subscribeSharedUrl(consumeSharedUrl);
+  }, []);
 
   const form = useForm({
     defaultValues: { name: "" },
