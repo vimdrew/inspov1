@@ -1,7 +1,14 @@
 import "@tanstack/react-start/server-only";
 import { removeBackground } from "./background.server";
 import { uploadImageBytes } from "./cloudinary.server";
-import { detectOutfitLinkKind, parseInstagramImages, parseTikTokImages } from "./link-parsers";
+import {
+  detectOutfitLinkKind,
+  extractOgVideo,
+  hasTikTokImagePost,
+  parseInstagramImages,
+  parseTikTokImages,
+  parseTikTokVideoUrl,
+} from "./link-parsers";
 import { fetchFollowingSafeRedirects } from "./link-security";
 
 const MAX_IMPORT_IMAGES = 20;
@@ -150,4 +157,119 @@ export async function importExternalImage(
   const secureUrl = await uploadImageBytes(upload, contentType, folder);
 
   return { imageUrl: secureUrl || url };
+}
+
+/**
+ * Resolves a link to a playable video URL: TikTok (mobile-UA page parse for
+ * playAddr), Instagram (og:video), or a direct video URL passed through after
+ * checking its content type.
+ */
+export async function resolveVideoLink(
+  input: string,
+): Promise<{ label: string; videoUrl: string }> {
+  const kind = detectOutfitLinkKind(input);
+
+  if (kind === "tiktok" || kind === "tiktok-photo" || kind === "tiktok-video") {
+    const headers = MOBILE_BROWSER_HEADERS;
+    const first = await readPageAfterRedirects(input, { headers });
+    let videoUrl = parseTikTokVideoUrl(first.html);
+
+    if (!videoUrl) {
+      const final = await readPage(first.finalUrl, { headers });
+      videoUrl = parseTikTokVideoUrl(final);
+    }
+
+    if (!videoUrl) {
+      throw new OutfitLinkError("We couldn't find a video in that TikTok post");
+    }
+
+    return { label: "TikTok video", videoUrl };
+  }
+
+  if (kind === "instagram" || kind === "instagram-reel") {
+    const first = await readPageAfterRedirects(input);
+    let videoUrl = extractOgVideo(first.html);
+
+    if (!videoUrl) {
+      const final = await readPage(first.finalUrl);
+      videoUrl = extractOgVideo(final);
+    }
+
+    if (!videoUrl) {
+      throw new OutfitLinkError("We couldn't find a video in that Instagram post");
+    }
+
+    return { label: "Instagram video", videoUrl };
+  }
+
+  const { response, url } = await fetchFollowingSafeRedirects(input);
+  const contentType = (response.headers.get("content-type") ?? "").split(";")[0].trim();
+
+  if (!response.ok) {
+    throw new OutfitLinkError("That link didn't lead to a video");
+  }
+  if (contentType.startsWith("text/html")) {
+    const videoUrl = extractOgVideo(await response.text());
+    if (videoUrl) return { label: "Shared video", videoUrl };
+    throw new OutfitLinkError("We couldn't find a video in that link");
+  }
+  if (!contentType.startsWith("video/")) {
+    void response.body?.cancel();
+    throw new OutfitLinkError("That link didn't lead to a video");
+  }
+  void response.body?.cancel();
+
+  return { label: "Shared video", videoUrl: url };
+}
+
+/**
+ * Decides whether a shared link is a photo post (route to the link flow, which
+ * imports images) or a video (route to the frame-pick flow). Needed because
+ * TikTok short links give no hint client-side; only the page tells whether it
+ * has slideshow images or a playable video.
+ */
+export async function classifySharedLink(input: string): Promise<"link" | "video"> {
+  const kind = detectOutfitLinkKind(input);
+
+  if (kind === "tiktok" || kind === "tiktok-photo" || kind === "tiktok-video") {
+    const headers = MOBILE_BROWSER_HEADERS;
+    const first = await readPageAfterRedirects(input, { headers });
+    let html = first.html;
+
+    if (!hasTikTokImagePost(html) && !parseTikTokVideoUrl(html)) {
+      html = await readPage(first.finalUrl, { headers });
+    }
+
+    if (hasTikTokImagePost(html)) return "link";
+    if (parseTikTokVideoUrl(html)) return "video";
+    throw new OutfitLinkError("We couldn't tell what that TikTok post contains");
+  }
+
+  if (kind === "instagram" || kind === "instagram-reel") {
+    const first = await readPageAfterRedirects(input);
+    let html = first.html;
+
+    if (!extractOgVideo(html) && parseInstagramImages(html).images.length === 0) {
+      html = await readPage(first.finalUrl);
+    }
+
+    if (extractOgVideo(html)) return "video";
+    if (parseInstagramImages(html).images.length > 0) return "link";
+    throw new OutfitLinkError("We couldn't tell what that Instagram post contains");
+  }
+
+  const { response } = await fetchFollowingSafeRedirects(input);
+  const contentType = (response.headers.get("content-type") ?? "").split(";")[0].trim();
+
+  if (!response.ok) {
+    throw new OutfitLinkError("That link couldn't be read");
+  }
+  if (contentType.startsWith("video/")) return "video";
+  if (contentType.startsWith("image/")) return "link";
+  if (contentType.startsWith("text/html")) {
+    if (extractOgVideo(await response.text())) return "video";
+    return "link";
+  }
+  void response.body?.cancel();
+  throw new OutfitLinkError("That link didn't lead to an image or video");
 }

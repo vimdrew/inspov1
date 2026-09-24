@@ -29,4 +29,5 @@ export class SlidingWindowLimiter {
 }
 
 export const resolveLinkLimiter = new SlidingWindowLimiter(60_000, 12);
+export const resolveVideoLimiter = new SlidingWindowLimiter(60_000, 12);
 export const importImageLimiter = new SlidingWindowLimiter(60_000, 12);

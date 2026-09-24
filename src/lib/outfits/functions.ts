@@ -7,12 +7,18 @@ import { db } from "#/lib/db/index.ts";
 import { outfits } from "#/lib/db/schema/outfit.schema.ts";
 
 import { removeBackground } from "./background.server";
-import { destroyImage, signUpload } from "./cloudinary.server";
+import { destroyImage, signUpload, uploadImageBytes } from "./cloudinary.server";
 import { parseImageUrl } from "./image-url";
-import { importExternalImage, resolveOutfitLink } from "./link-import.server";
-import { importImageLimiter, resolveLinkLimiter } from "./rate-limit";
+import {
+  importExternalImage,
+  classifySharedLink,
+  resolveOutfitLink,
+  resolveVideoLink,
+} from "./link-import.server";
+import { importImageLimiter, resolveLinkLimiter, resolveVideoLimiter } from "./rate-limit";
 import {
   createOutfitSchema,
+  importOutfitFrameSchema,
   importOutfitImageSchema,
   rateOutfitSchema,
   resolveOutfitLinkSchema,
@@ -187,6 +193,28 @@ export const $resolveOutfitLink = createServerFn({ method: "POST" })
     return resolveOutfitLink(data.url);
   });
 
+export const $resolveSharedLink = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(resolveOutfitLinkSchema)
+  .handler(async ({ context, data }) => {
+    if (!resolveVideoLimiter.check(context.user.id)) {
+      setResponseStatus(429, "Too many requests");
+      throw new Error("Too many lookups — try again in a moment");
+    }
+    return classifySharedLink(data.url);
+  });
+
+export const $resolveVideoLink = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(resolveOutfitLinkSchema)
+  .handler(async ({ context, data }) => {
+    if (!resolveVideoLimiter.check(context.user.id)) {
+      setResponseStatus(429, "Too many requests");
+      throw new Error("Too many lookups — try again in a moment");
+    }
+    return resolveVideoLink(data.url);
+  });
+
 export const $importOutfitImage = createServerFn({ method: "POST" })
   .middleware([freshAuthMiddleware])
   .validator(importOutfitImageSchema)
@@ -196,6 +224,27 @@ export const $importOutfitImage = createServerFn({ method: "POST" })
       throw new Error("Too many imports — try again in a moment");
     }
     return importExternalImage(data.imageUrl, `outfits/${context.user.id}`);
+  });
+
+export const $importOutfitFrame = createServerFn({ method: "POST" })
+  .middleware([freshAuthMiddleware])
+  .validator(importOutfitFrameSchema)
+  .handler(async ({ context, data }) => {
+    if (!importImageLimiter.check(context.user.id)) {
+      setResponseStatus(429, "Too many requests");
+      throw new Error("Too many imports — try again in a moment");
+    }
+
+    const bytes = new Uint8Array(Buffer.from(data.imageBase64, "base64"));
+    if (bytes.byteLength > MAX_IMAGE_SIZE) {
+      throw new Error("That frame was too large");
+    }
+
+    const cutout = await removeBackground(bytes, "outfit-frame", data.contentType);
+    const upload = cutout ?? bytes;
+    const imageUrl = await uploadImageBytes(upload, data.contentType, `outfits/${context.user.id}`);
+
+    return { imageUrl };
   });
 
 export const $deleteOutfit = createServerFn({ method: "POST" })

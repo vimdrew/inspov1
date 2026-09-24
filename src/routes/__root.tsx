@@ -15,6 +15,8 @@ import { useEffect, useRef } from "react";
 import { ThemeProvider } from "#/components/theme-provider.tsx";
 import { Toaster } from "#/components/ui/toast.tsx";
 import { getSharedUrl, setSharedUrl } from "#/lib/capacitor/shared-link-store.ts";
+import { $resolveSharedLink } from "#/lib/outfits/functions.ts";
+import { sharedRouteHint } from "#/lib/outfits/link-parsers.ts";
 import { extractSharedUrl } from "#/lib/outfits/shared-link.ts";
 
 import appCss from "#/styles.css?url";
@@ -75,7 +77,16 @@ function RootDocument({ children }: { readonly children: React.ReactNode }) {
           const url = extractSharedUrl(text);
           if (!url || url === lastHandledUrl || url === getSharedUrl()) continue;
           lastHandledUrl = url;
-          setSharedUrl(url);
+
+          const route = sharedRouteHint(url);
+          if (route) {
+            setSharedUrl(url, route);
+          } else {
+            void $resolveSharedLink({ data: { url } })
+              .then((resolved) => setSharedUrl(url, resolved))
+              .catch(() => setSharedUrl(url, "link"));
+          }
+
           if (router.state.location.pathname !== "/") {
             void router.navigate({ to: "/" });
           }

@@ -15,6 +15,7 @@ import {
 import { toast } from "#/components/ui/toast";
 import {
   clearSharedUrl,
+  getSharedRoute,
   getSharedUrl,
   subscribeSharedUrl,
 } from "#/lib/capacitor/shared-link-store.ts";
@@ -59,7 +60,7 @@ export const AddLinkOutfitDialog = () => {
   useEffect(() => {
     const consumeSharedUrl = () => {
       const pending = getSharedUrl();
-      if (!pending) return;
+      if (!pending || getSharedRoute() !== "link") return;
       clearSharedUrl();
       setUrl(pending);
       setOpen(true);

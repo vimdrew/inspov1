@@ -25,3 +25,8 @@ export const resolveOutfitLinkSchema = z.object({
 export const importOutfitImageSchema = z.object({
   imageUrl: z.url(),
 });
+
+export const importOutfitFrameSchema = z.object({
+  imageBase64: z.string().min(1),
+  contentType: z.enum(["image/jpeg", "image/png"]),
+});
